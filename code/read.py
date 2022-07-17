@@ -268,7 +268,7 @@ def update(a):
 i = 0               
 gui = PlotLogGui()
 
-with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson") as url:
+with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson") as url:
     data = json.loads(url.read().decode())
 with open(gui.out_file_name.replace(".csv", "")+'_quakes_prev.json', 'w') as qfile:
     qfile.write(json.dumps(data))
@@ -277,7 +277,7 @@ anim = animation.FuncAnimation(gui.fig, update, interval=100)
 #gui.read_data()
 gui.master.mainloop()
 
-with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson") as url:
+with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson") as url:
     data = json.loads(url.read().decode())
 with open(gui.out_file_name.replace(".csv", "")+'_quakes.json', 'w') as qfile:
     qfile.write(json.dumps(data))

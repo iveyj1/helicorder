@@ -14,6 +14,9 @@ import tkinter.ttk as ttk
 from tkinter.filedialog import askopenfilename
 #import serial.tools.list_ports
 
+import scipy.fftpack as fft
+import scipy.signal as signal
+
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 # Implement the default Matplotlib key bindings.
@@ -88,6 +91,7 @@ class PlotLogGui:
         self.hpbutton = ttk.Button(self.controlFrame, text="HP", command=self.plot_hp)
         self.getbutton = ttk.Button(self.controlFrame, text="Get EQ times", command=self.get_eq)
         self.specbutton = ttk.Button(self.controlFrame, text="Plot Spectrogram", command=self.plot_spec)
+        self.fftbutton = ttk.Button(self.controlFrame, text="Plot fft", command=self.plot_fft)
 
 
         # configure frame grid
@@ -126,6 +130,7 @@ class PlotLogGui:
         self.bpbutton.grid(row=4, column=0)
         self.getbutton.grid(row=5, column=0)
         self.specbutton.grid(row=6, column=0)
+        self.fftbutton.grid(row=7, column=0)
 
 
         self.filter = None
@@ -176,7 +181,7 @@ class PlotLogGui:
                     pass
             self.trace = np.array(self.trace)
             if(self.filter == "LP"):
-                coeffs = sig.firls(1023,bands=(0, 0.08, 0.1, 5), desired = (1, 1, 0, 0), fs=10)
+                coeffs = sig.firls(1023,bands=(0, 0.10, 0.14, 5), desired = (1, 1, 0, 0), fs=10)
                 self.trace = sig.filtfilt(coeffs, 1, self.trace)
             elif(self.filter == "HP"):
                 coeffs = sig.firls(1023,bands=(0, 1, 1.1, 5), desired = (0, 0, 1, 1), fs=10)
@@ -265,6 +270,18 @@ class PlotLogGui:
         #self.axs.imshow(sxx)
         self.axs.specgram(self.trace, NFFT=2048, Fs=10, cmap='inferno')
         self.fig.canvas.draw_idle()
+        return    
+        
+    def plot_fft(self):
+        if self.axs != None:
+            self.axs.remove()
+        self.axs = self.fig.add_subplot(111)
+        #t,f,sxx = sig.spectrogram(self.trace, self.sample_rate)
+        #self.axs.imshow(sxx)
+        N = len(self.trace)
+        f, Pxx_den = signal.welch(self.trace, fs = self.sample_rate, window = 'blackman', nperseg = 8192, nfft = 8192, detrend = 'linear', scaling = 'spectrum')
+        self.axs.semilogy(f, Pxx_den)
+        self.fig.canvas.draw_idle()
         return
 
     def xyfromtime(self, time):
@@ -282,7 +299,7 @@ class PlotLogGui:
     def get_eq(self):
         offs = .2
         print("getting eq")
-        with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson") as url:
+        with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson") as url:
             data = json.loads(url.read().decode())
             #print(data)
             first = True
