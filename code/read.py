@@ -11,6 +11,8 @@ import datetime
 import serial
 import serial.tools.list_ports as list_ports
 import tkinter.dialog as dialog
+import json
+import urllib
 
 import time
 
@@ -137,6 +139,7 @@ class PlotLogGui:
 
         self.filter = None
         self.axs = self.fig.add_subplot(111)
+        
 
         self.strip_time = 3600.0 
         self.sample_rate = 10.0
@@ -161,6 +164,7 @@ class PlotLogGui:
         self.out_file = open(self.out_file_name, "w")
         print(type(self.out_file))
         print("opening: %s" % os.path.realpath(self.out_file.name))
+        
 
         self.ser = serial.Serial(self.com_port, self.baud_rate, timeout = 0)
         while(self.ser.read(1000) == 1000):
@@ -174,12 +178,10 @@ class PlotLogGui:
             self.socket_thread = threading.Thread(target = socket_worker, args = (self.config['DEFAULT']['socket_port'], self.socket_out_queue, self.socket_connected_event))
             self.socket_thread.daemon = True
             self.socket_thread.start()
+        self.rollover = False
 
     def read_data(self):
-        if self.config["DEFAULT"]["com_port"] == "":
-            str = self.ser.read(1000).decode("utf-8")
-        elif self.config["DEFAULT"]["tcp_address"] == "":
-
+        str = self.ser.read(1000).decode("utf-8")
         if len(str) > 0:
             list, self.remainder = getlines(self.remainder + str)
             for data in list:
@@ -191,6 +193,19 @@ class PlotLogGui:
                 if self.socket_connected_event.is_set():
                     self.socket_out_queue.put(data.encode('utf-8') + b'\n')            
             self.out_file.close()
+            time_hour_minute = datetime.datetime.utcnow().replace(year=1900, month=1, day=1, second=0, microsecond=0)
+            midnight = datetime.datetime(1900,1,1,0,0,0,0)
+            if time_hour_minute == midnight:
+                if not self.rollover:
+                    #print(time_hour_minute.strftime("%Y-%m-%dT%H%M"), midnight.strftime("%Y-%m-%dT%H%M"))
+                    self.out_file_name = self.config["DEFAULT"]["out_file_base_name"] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
+                    with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson") as url:
+                        data = json.loads(url.read().decode())
+                    with open(gui.out_file_name.replace(".csv", "")+'_quakes.json', 'w') as qfile:
+                        qfile.write(json.dumps(data))                    
+                    self.rollover = True
+            else:
+                self.rollover = False
             self.out_file = open(self.out_file_name, "a")
             self.plot()
    
@@ -200,29 +215,35 @@ class PlotLogGui:
             self.axs.set_xlim(900,0)
             self.lines = self.axs.plot(self.trace['t'], self.trace['y'], color = 'b', linewidth = 1)
         else:
+            #ylimits = self.axs.get_ylim()
+            #if max(self.trace['y']) > ylimits[0] or min(self.trace['y']) < ylimits[1]:
+            #    self.axs.set_ylim(ylimits[0] * 10, ylimits[1] * 10)
             self.lines[0].set_data(self.trace['t'], self.trace['y'])
         self.fig.canvas.draw_idle()
 
 import socket
 def socket_worker(socket_port, out_queue, connected_event):
     while 1:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind((socket.gethostname(), int(socket_port)))
-        print("listening on", ("10.0.0.7", int(socket_port)))
-        s.listen(1)
-        conn, addr = s.accept()
-        print('Connection address:', addr)
-        connected_event.set()
-        while 1:
-            #data = conn.recv(BUFFER_SIZE)
-            data = out_queue.get(block = True)
-            print("transmitting data:", data)
-            out_queue.task_done()
-            try:
-                conn.send(data)
-            except ConnectionAbortedError:
-                connected_event.clear()
-                break
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((socket.gethostname(), int(socket_port)))
+            print("listening on", ("10.0.0.7", int(socket_port)))
+            s.listen(1)
+            conn, addr = s.accept()
+            print('Connection address:', addr)
+            connected_event.set()
+            while 1:
+                #data = conn.recv(BUFFER_SIZE)
+                data = out_queue.get(block = True)
+                print("transmitting data:", data)
+                out_queue.task_done()
+                try:
+                    conn.send(data)
+                except ConnectionAbortedError:
+                    connected_event.clear()
+                    break
+
+
+
 
 def getlines(str):
     list = []
@@ -246,9 +267,21 @@ def update(a):
 
 i = 0               
 gui = PlotLogGui()
+
+with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson") as url:
+    data = json.loads(url.read().decode())
+with open(gui.out_file_name.replace(".csv", "")+'_quakes_prev.json', 'w') as qfile:
+    qfile.write(json.dumps(data))
+
 anim = animation.FuncAnimation(gui.fig, update, interval=100)
 #gui.read_data()
 gui.master.mainloop()
+
+with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson") as url:
+    data = json.loads(url.read().decode())
+with open(gui.out_file_name.replace(".csv", "")+'_quakes.json', 'w') as qfile:
+    qfile.write(json.dumps(data))
+
 gui.ser.close()
 if gui.out_file != None:
     gui.out_file.close()
