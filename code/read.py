@@ -137,7 +137,6 @@ class PlotLogGui:
 
         self.filter = None
         self.axs = self.fig.add_subplot(111)
-        
 
         self.strip_time = 3600.0 
         self.sample_rate = 10.0
@@ -162,7 +161,6 @@ class PlotLogGui:
         self.out_file = open(self.out_file_name, "w")
         print(type(self.out_file))
         print("opening: %s" % os.path.realpath(self.out_file.name))
-        
 
         self.ser = serial.Serial(self.com_port, self.baud_rate, timeout = 0)
         while(self.ser.read(1000) == 1000):
@@ -178,7 +176,10 @@ class PlotLogGui:
             self.socket_thread.start()
 
     def read_data(self):
-        str = self.ser.read(1000).decode("utf-8")
+        if self.config["DEFAULT"]["com_port"] == "":
+            str = self.ser.read(1000).decode("utf-8")
+        elif self.config["DEFAULT"]["tcp_address"] == "":
+
         if len(str) > 0:
             list, self.remainder = getlines(self.remainder + str)
             for data in list:
@@ -222,9 +223,6 @@ def socket_worker(socket_port, out_queue, connected_event):
             except ConnectionAbortedError:
                 connected_event.clear()
                 break
-
-
-
 
 def getlines(str):
     list = []
