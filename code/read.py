@@ -1,16 +1,38 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
+
+import scipy.signal as sig
+import sys
+import numpy as np
+import csv
+import datetime
 import serial
+import serial.tools.list_ports as list_ports
+import tkinter.dialog as dialog
+
+import time
+
+import urllib.request, json 
+
+from datetime import timedelta
 import tkinter as tk
+from tkinter import messagebox
+ 
 import tkinter.ttk as ttk
 from tkinter.filedialog import askopenfilename
+#import serial.tools.list_ports
+
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 # Implement the default Matplotlib key bindings.
 from matplotlib.figure import Figure
 import os
+
 import configparser
+import queue
+import threading
 
 def mb(s):
     tk.messagebox.showinfo(" ", s)
@@ -130,49 +152,46 @@ class PlotLogGui:
             with open('read_config.ini', 'r') as configfile:
                 self.config.read_file(configfile)
         except IOError:
-            self.config["DEFAULT"] = {'com_port' : 'COM1', 'baud_rate' : '115200', 'out_file_base_name' : "unknown"}
+            self.config["DEFAULT"] = {'com_port' : 'COM1', 'baudrate' : '115200', 'out_file_base_name' : "unknown", 'socket_port' : '0'}
             with open('read_config.ini', 'w') as configfile:
                 self.config.write(configfile)
-        self.port = self.config["DEFAULT"]["com_port"]
-        self.baudrate = self.config["DEFAULT"]["baud_rate"]
+        self.com_port = self.config["DEFAULT"]["com_port"]
+        self.baud_rate = self.config["DEFAULT"]["baud_rate"]
 
         self.out_file_name = self.config["DEFAULT"]["out_file_base_name"] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
         self.out_file = open(self.out_file_name, "w")
         print(type(self.out_file))
         print("opening: %s" % os.path.realpath(self.out_file.name))
+        
 
-
-        # ports = list_ports.comports()
-        # portstrings = []
-        # # for port in ports:
-        #     portstrings.append(port.device)
-        #     ret = dialog.Dialog(title = "Select com port",  text = "foo", bitmap='questhead', default = 0, strings = portstrings)
-        #sys.stdout = StdoutRedirector(self.text)
-        #print("Opening ", portstrings[ret.num])
-        #print("Opening ", )
-        self.ser = serial.Serial(self.port, self.baudrate, timeout = 0)
+        self.ser = serial.Serial(self.com_port, self.baud_rate, timeout = 0)
         while(self.ser.read(1000) == 1000):
             pass
         self.sampcount = 0
         self.remainder = ""
-              
+        self.queue = None
+        if self.config['DEFAULT']['socket_port'] != 0:
+            self.socket_out_queue = queue.Queue()
+            self.socket_connected_event = threading.Event()
+            self.socket_thread = threading.Thread(target = socket_worker, args = (self.config['DEFAULT']['socket_port'], self.socket_out_queue, self.socket_connected_event))
+            self.socket_thread.daemon = True
+            self.socket_thread.start()
+
     def read_data(self):
         str = self.ser.read(1000).decode("utf-8")
         if len(str) > 0:
-            #print(self.sampcount, str)
-            list, self.remainder = getlines(self.remainder+str)
-            #print(list, self.remainder)
+            list, self.remainder = getlines(self.remainder + str)
             for data in list:
                 self.sampcount = self.sampcount + 1
                 self.trace["y"] = shift(self.trace['y'], -1)
                 self.trace["y"][-1] = int(data)
-            if self.out_file != None:
-                for value in list:
-                    self.out_file.write(value + "\n") 
+                if self.out_file != None:
+                    self.out_file.write(data + "\n") 
+                if self.socket_connected_event.is_set():
+                    self.socket_out_queue.put(data.encode('utf-8') + b'\n')            
             self.out_file.close()
             self.out_file = open(self.out_file_name, "a")
             self.plot()
-        #self.master.after(1000, self.read_data())
    
     def plot(self):
         if len(self.lines) == 0:
@@ -183,55 +202,29 @@ class PlotLogGui:
             self.lines[0].set_data(self.trace['t'], self.trace['y'])
         self.fig.canvas.draw_idle()
 
-
-import ctypes
-from ctypes import wintypes
-import os
-import msvcrt
-
-GENERIC_READ = 0x80000000
-GENERIC_WRITE = 0x40000000
-
-OPEN_EXISTING = 3
-OPEN_ALWAYS = 4
-
-ACCESS_MODES = {
-    "r": GENERIC_READ,
-    "w": GENERIC_WRITE,
-    "r+": (GENERIC_READ|GENERIC_WRITE)
-}
-
-OPEN_MODES = {
-    "r": OPEN_EXISTING,
-    "w": OPEN_ALWAYS,
-    "r+": OPEN_ALWAYS,
-}
+import socket
+def socket_worker(socket_port, out_queue, connected_event):
+    while 1:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((socket.gethostname(), int(socket_port)))
+        print("listening on", ("10.0.0.7", int(socket_port)))
+        s.listen(1)
+        conn, addr = s.accept()
+        print('Connection address:', addr)
+        connected_event.set()
+        while 1:
+            #data = conn.recv(BUFFER_SIZE)
+            data = out_queue.get(block = True)
+            print("transmitting data:", data)
+            out_queue.task_done()
+            try:
+                conn.send(data)
+            except ConnectionAbortedError:
+                connected_event.clear()
+                break
 
 
-def open_file_nonblocking(filename, access):
-    # Removes the b for binary access.
-    internal_access = access.replace("b", "")
-    access_mode = ACCESS_MODES[internal_access]
-    open_mode = OPEN_MODES[internal_access]
-    handle = wintypes.HANDLE(ctypes.windll.kernel32.CreateFileW(
-        wintypes.LPWSTR(filename),
-        wintypes.DWORD(access_mode),
-        wintypes.DWORD(2|1),  # File share read and write
-        ctypes.c_void_p(0),
-        wintypes.DWORD(open_mode),
-        wintypes.DWORD(0),
-        wintypes.HANDLE(0)
-    ))
 
-    try:
-        fd = msvcrt.open_osfhandle(handle.value, 0)
-    except OverflowError as exc:
-        # Python 3.X
-        raise OSError("Failed to open file.") from None
-        # Python 2
-        # raise OSError("Failed to open file.")
-
-    return os.fdopen(fd, access)
 
 def getlines(str):
     list = []
