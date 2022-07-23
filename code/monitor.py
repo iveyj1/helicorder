@@ -96,7 +96,7 @@ class PlotLogGui:
         self.controlFrame.config(borderwidth=2, relief="sunken")
         
         # create label
-        self.readbutton = ttk.Button(self.controlFrame, text="Don't push this", command=self.read_data)
+        self.readbutton = ttk.Button(self.controlFrame, text="Don't push this button", command=self.read_data)
 
         # configure frame grid
         colwt = [0,1]
@@ -143,6 +143,9 @@ class PlotLogGui:
         self.config = getconfig.getconfig('seislog.conf')
         self.server_address = self.config['DEFAULT']['server_address']
         self.server_port = self.config['DEFAULT']['server_port']
+        self.monitor_display_offset = int(self.config['DEFAULT']['monitor_display_offset'])
+        self.monitor_display_max = int(self.config['DEFAULT']['monitor_display_max'])
+        self.monitor_display_min = int(self.config['DEFAULT']['monitor_display_min'])
         
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((self.server_address, int(self.server_port)))
@@ -165,12 +168,12 @@ class PlotLogGui:
             for data in list:
                 self.sampcount = self.sampcount + 1
                 self.trace["y"] = shift(self.trace['y'], -1)
-                self.trace["y"][-1] = int(data)
+                self.trace["y"][-1] = int(data) + self.monitor_display_offset
             self.plot()
    
     def plot(self):
         if len(self.lines) == 0:
-            self.axs.set_ylim(100000,-100000)
+            self.axs.set_ylim(self.monitor_display_max, self.monitor_display_min)
             self.axs.set_xlim(900,0)
             self.lines = self.axs.plot(self.trace['t'], self.trace['y'], color = 'b', linewidth = 1)
         else:

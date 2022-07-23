@@ -12,7 +12,10 @@ def getconfig(config_file_name):
                                 'server_address' : '127.0.0.1',
                                 'server_port' : '5067', 
                                 'get_quakes':'False',
-                                'quake_url':'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson'
+                                'quake_url':'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson',
+                                'monitor_display_offset':'0',
+                                'monitor_display_max':100000,
+                                'monitor_display_min':-100000
                             }
         with open(config_file_name, 'w') as configfile:
             print('configuration file not found - default {} written'.format(config_file_name))
