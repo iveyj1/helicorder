@@ -75,11 +75,14 @@ class ReadData:
     def get_quakes_from_USGS(self, filename_adder):
         if self.get_quakes:
             try:
-                print('downloading quakes')
+                print('\ndownloading quakes')
+                quakefilename = reader.out_file_name.replace('.csv', '') + '_quakes' + filename_adder +'.json'
                 with urllib.request.urlopen(self.quake_url,timeout = 10) as url:
                     data = json.loads(url.read().decode())
-                with open(reader.out_file_name.replace('.csv', '') + '_quakes' + filename_adder +'.json', 'w') as qfile:
+                    print('download complete')
+                with open(quakefilename, 'w') as qfile:
                     qfile.write(json.dumps(data))
+                    print('quake file {} written'.format(quakefilename))
             except urllib.error.URLError:
                 pass
             print('done with quakes')
