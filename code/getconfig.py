@@ -6,7 +6,7 @@ def getconfig(config_file_name):
             config.read_file(configfile)
     except IOError:
         config["DEFAULT"] = {
-                                'com_port' : 'COM1', 
+                                'com_port' : '/dev/ttyUSB0', 
                                 'baud_rate' : '9600', 
                                 'out_file_base_name' : "seismo_", 
                                 'server_address' : '127.0.0.1',

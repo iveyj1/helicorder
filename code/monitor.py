@@ -15,7 +15,6 @@ import urllib.request, json
 import tkinter as tk
 from tkinter import messagebox
 import tkinter.ttk as ttk
-from tkinter.filedialog import askopenfilename
 
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
@@ -77,6 +76,7 @@ class PlotLogGui:
 
         # create frame for bottom text widget
         self.textFrame = tk.Frame(self.frame)
+
         # create text widget and scrollbar
         self.text = tk.Text(self.textFrame, borderwidth=2, relief="sunken", width=100, height=12, )
         self.text.config(font=("consolas",8))
@@ -96,7 +96,7 @@ class PlotLogGui:
         self.controlFrame.config(borderwidth=2, relief="sunken")
         
         # create label
-        self.readbutton = ttk.Button(self.controlFrame, text="Read data", command=self.read_data)
+        self.readbutton = ttk.Button(self.controlFrame, text="Don't push this", command=self.read_data)
 
         # configure frame grid
         colwt = [0,1]
@@ -141,26 +141,8 @@ class PlotLogGui:
         self.lines = []
         self.i = 0
         self.config = getconfig.getconfig('seislog.conf')
-        # self.config = configparser.ConfigParser()
-        # config_file_name = 'seislog.conf'
-        # try:
-        #     with open(config_file_name, 'r') as configfile:
-        #         self.config.read_file(configfile)
-        # except IOError:
-        #     self.config["DEFAULT"] = {'com_port' : 'COM1', 'baud_rate' : '9600', 'out_file_base_name' : "unknown", 'server_port' : '0', 'server_address' : '127.0.0.1'}
-        #     with open(config_file_name, 'w') as configfile:
-        #         print('configuration file not found - default {} written'.format(config_file_name))
-        #         self.config.write(configfile)
-        self.com_port = self.config["DEFAULT"]["com_port"]
-        self.baud_rate = self.config["DEFAULT"]["baud_rate"]
-        self.out_file_base_name = self.config["DEFAULT"]["out_file_base_name"]
-        self.out_file_name = self.out_file_base_name + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
-        self.out_file = open(self.out_file_name, "w")
         self.server_address = self.config['DEFAULT']['server_address']
         self.server_port = self.config['DEFAULT']['server_port']
-        
-        print(type(self.out_file))
-        print("opening: %s" % os.path.realpath(self.out_file.name))
         
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((self.server_address, int(self.server_port)))
@@ -184,23 +166,6 @@ class PlotLogGui:
                 self.sampcount = self.sampcount + 1
                 self.trace["y"] = shift(self.trace['y'], -1)
                 self.trace["y"][-1] = int(data)
-                if self.out_file != None:
-                    self.out_file.write(data + "\n") 
-            self.out_file.close()
-            time_hour_minute = datetime.datetime.utcnow().replace(year=1900, month=1, day=1, second=0, microsecond=0)
-            midnight = datetime.datetime(1900,1,1,0,0,0,0)
-            if time_hour_minute == midnight:
-                if not self.rollover:
-                    #print(time_hour_minute.strftime("%Y-%m-%dT%H%M"), midnight.strftime("%Y-%m-%dT%H%M"))
-                    self.out_file_name = self.out_file_base_name + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
-                    with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson") as url:
-                        data = json.loads(url.read().decode())
-                    with open(gui.out_file_name.replace(".csv", "")+'_quakes.json', 'w') as qfile:
-                        qfile.write(json.dumps(data))                    
-                    self.rollover = True
-            else:
-                self.rollover = False
-            self.out_file = open(self.out_file_name, "a")
             self.plot()
    
     def plot(self):
@@ -240,7 +205,4 @@ gui = PlotLogGui()
 
 anim = animation.FuncAnimation(gui.fig, update, interval=100)
 gui.master.mainloop()
-
-if gui.out_file != None:
-    gui.out_file.close()
 

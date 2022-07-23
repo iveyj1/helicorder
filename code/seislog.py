@@ -12,23 +12,7 @@ import getconfig
 
 class ReadData:
     def __init__(self):
-
-
         self.config = getconfig.getconfig('seislog.conf')
-        # self.config = configparser.ConfigParser()
-        # try:
-        #     with open('seislog.conf', 'r') as configfile:
-        #         self.config.read_file(configfile)
-        # except IOError:
-        #     self.config['DEFAULT'] = {'com_port' : 'COM1', 
-        #                                 'baud_rate' : '9600', 
-        #                                 'out_file_base_name' : "seismo_", 
-        #                                 'server_port' : '5067', 
-        #                                 'get_quakes':'False',
-        #                                 'quake_url':'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson'
-        #                                 }
-        #     with open('read_config.ini', 'w') as configfile:
-        #         self.config.write(configfile)
         self.com_port = self.config['DEFAULT']["com_port"]
         self.baud_rate = self.config['DEFAULT']["baud_rate"]
         self.out_file_base_name = self.config['DEFAULT']['out_file_base_name']
@@ -37,6 +21,7 @@ class ReadData:
         self.get_quakes = (self.config['DEFAULT']['get_quakes'].upper() == 'TRUE')
         self.quake_url = self.config['DEFAULT']['quake_url']
 
+        self.out_file = None
         print("opening: %s" % os.path.realpath(self.out_file_name))
         self.out_file = open(self.out_file_name, "w")
 
@@ -46,16 +31,20 @@ class ReadData:
             pass
         self.remainder = ""
         self.queue = None
-        if self.config['DEFAULT']['server_port'] != 0:
+        if self.server_port != 0:
             self.socket_out_queue = queue.Queue()
             self.socket_connected_event = threading.Event()
-            self.socket_thread = threading.Thread(target = socket_worker, args = (self.config['DEFAULT']['server_port'], self.socket_out_queue, self.socket_connected_event))
+            self.socket_thread = threading.Thread(target = socket_worker, args = (self.server_port, self.socket_out_queue, self.socket_connected_event))
             self.socket_thread.daemon = True
             self.socket_thread.start()
         self.rollover = False
 
     def read_data(self):
         str = self.ser.read(1000).decode("utf-8")
+        # if str == '':
+        #     print('early')
+        # else:
+        #     print(str)
         if len(str) > 0:
             list, self.remainder = getlines(self.remainder + str)
             for data in list:
@@ -69,7 +58,7 @@ class ReadData:
             if time_hour_minute == midnight:
                 if not self.rollover:
                     #print(time_hour_minute.strftime("%Y-%m-%dT%H%M"), midnight.strftime("%Y-%m-%dT%H%M"))
-                    self.out_file_name = self.config['DEFAULT']['out_file_base_name'] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
+                    self.out_file_name = self.out_file_base_name + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
                     self.get_quakes_from_USGS('')
                     self.rollover = True
             else:
@@ -102,12 +91,10 @@ def socket_worker(server_port, out_queue, connected_event):
             print('remote connection from:', addr)
             connected_event.set()
             while 1:
-                #data = conn.recv(BUFFER_SIZE)
                 data = out_queue.get(block = True)
                 #print("transmitting data:", data)
                 out_queue.task_done()
                 try:
-                    #print('sending data')
                     conn.send(data)
                 except (ConnectionAbortedError, ConnectionResetError):
                     print('remote disconnected')
