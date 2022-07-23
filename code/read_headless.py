@@ -36,10 +36,10 @@ class ReadData:
         print(type(self.out_file))
         print("opening: %s" % os.path.realpath(self.out_file.name))
 
+        self.ser = None
         self.ser = serial.Serial(self.com_port, self.baud_rate, timeout = 0)
         while(self.ser.read(1000) == 1000):
             pass
-        self.sampcount = 0
         self.remainder = ""
         self.queue = None
         if self.config['DEFAULT']['server_port'] != 0:
@@ -55,7 +55,6 @@ class ReadData:
         if len(str) > 0:
             list, self.remainder = getlines(self.remainder + str)
             for data in list:
-                self.sampcount = self.sampcount + 1
                 if self.out_file != None:
                     self.out_file.write(data + "\n") 
                 if self.socket_connected_event.is_set():
@@ -93,18 +92,18 @@ def socket_worker(socket_port, out_queue, connected_event):
             print("listening on", (socket.gethostname(), int(socket_port)))  # how do I get numeric host address? - gethostbyname() returns 127.0.1.1
             s.listen(1)
             conn, addr = s.accept()
-            print('Connection address:', addr)
+            print('remote connection from:', addr)
             connected_event.set()
             while 1:
                 #data = conn.recv(BUFFER_SIZE)
                 data = out_queue.get(block = True)
-                print("transmitting data:", data)
+                #print("transmitting data:", data)
                 out_queue.task_done()
                 try:
                     print('sending data')
                     conn.send(data)
                 except (ConnectionAbortedError, ConnectionResetError):
-                    print('connection aborted')
+                    print('remote disconnected')
                     connected_event.clear()
                     break
 
@@ -137,7 +136,9 @@ except KeyboardInterrupt:
 
 reader.get_quakes_from_USGS('')
 
-reader.ser.close()
+if reader.ser != None:
+    reader.ser.close()
+
 if reader.out_file != None:
     reader.out_file.close()
 

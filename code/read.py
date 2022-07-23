@@ -236,7 +236,6 @@ i = 0
 gui = PlotLogGui()
 
 anim = animation.FuncAnimation(gui.fig, update, interval=100)
-#gui.read_data()
 gui.master.mainloop()
 
 gui.ser.close()
