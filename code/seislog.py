@@ -8,33 +8,37 @@ import os
 import configparser
 import queue
 import threading
+import getconfig
 
 class ReadData:
     def __init__(self):
 
-        self.config = configparser.ConfigParser()
-        try:
-            with open('read_config.ini', 'r') as configfile:
-                self.config.read_file(configfile)
-        except IOError:
-            self.config["DEFAULT"] = {'com_port' : 'COM1', 
-                                        'baudrate' : '9600', 
-                                        'out_file_base_name' : "seismo_", 
-                                        'socket_port' : '5067', 
-                                        'get_quakes':'False',
-                                        'quake_url':'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson'
-                                        }
-            with open('read_config.ini', 'w') as configfile:
-                self.config.write(configfile)
-        self.com_port = self.config["DEFAULT"]["com_port"]
-        self.baud_rate = self.config["DEFAULT"]["baud_rate"]
 
-        self.out_file_name = self.config["DEFAULT"]["out_file_base_name"] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
-        self.out_file = open(self.out_file_name, "w")
+        self.config = getconfig.getconfig('seislog.conf')
+        # self.config = configparser.ConfigParser()
+        # try:
+        #     with open('seislog.conf', 'r') as configfile:
+        #         self.config.read_file(configfile)
+        # except IOError:
+        #     self.config['DEFAULT'] = {'com_port' : 'COM1', 
+        #                                 'baud_rate' : '9600', 
+        #                                 'out_file_base_name' : "seismo_", 
+        #                                 'server_port' : '5067', 
+        #                                 'get_quakes':'False',
+        #                                 'quake_url':'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson'
+        #                                 }
+        #     with open('read_config.ini', 'w') as configfile:
+        #         self.config.write(configfile)
+        self.com_port = self.config['DEFAULT']["com_port"]
+        self.baud_rate = self.config['DEFAULT']["baud_rate"]
+        self.out_file_base_name = self.config['DEFAULT']['out_file_base_name']
+        self.out_file_name = self.out_file_base_name + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
+        self.server_port = self.config['DEFAULT']['server_port']
         self.get_quakes = (self.config['DEFAULT']['get_quakes'].upper() == 'TRUE')
         self.quake_url = self.config['DEFAULT']['quake_url']
-        print(type(self.out_file))
-        print("opening: %s" % os.path.realpath(self.out_file.name))
+
+        print("opening: %s" % os.path.realpath(self.out_file_name))
+        self.out_file = open(self.out_file_name, "w")
 
         self.ser = None
         self.ser = serial.Serial(self.com_port, self.baud_rate, timeout = 0)
@@ -65,7 +69,7 @@ class ReadData:
             if time_hour_minute == midnight:
                 if not self.rollover:
                     #print(time_hour_minute.strftime("%Y-%m-%dT%H%M"), midnight.strftime("%Y-%m-%dT%H%M"))
-                    self.out_file_name = self.config["DEFAULT"]["out_file_base_name"] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
+                    self.out_file_name = self.config['DEFAULT']['out_file_base_name'] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
                     self.get_quakes_from_USGS('')
                     self.rollover = True
             else:
@@ -88,11 +92,11 @@ class ReadData:
             print('done with quakes')
 
 import socket
-def socket_worker(socket_port, out_queue, connected_event):
+def socket_worker(server_port, out_queue, connected_event):
     while 1:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('', int(socket_port)))
-            print("listening on", (socket.gethostname(), int(socket_port)))  # how do I get numeric host address? - gethostbyname() returns 127.0.1.1
+            s.bind(('', int(server_port)))
+            print("listening on", (socket.gethostname(), int(server_port)))  # how do I get numeric host address? - gethostbyname() returns 127.0.1.1
             s.listen(1)
             conn, addr = s.accept()
             print('remote connection from:', addr)
@@ -132,7 +136,7 @@ reader.get_quakes_from_USGS('_prev')
 
 try:
     while True:
-        time.sleep(0.05)
+        time.sleep(0.05) 
         reader.read_data()
 except KeyboardInterrupt:
     pass

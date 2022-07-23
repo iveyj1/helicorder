@@ -140,18 +140,20 @@ class PlotLogGui:
         self.lines = []
         self.i = 0
 
-        self.config = configparser.ConfigParser()
-        try:
-            with open('read_config.ini', 'r') as configfile:
-                self.config.read_file(configfile)
-        except IOError:
-            self.config["DEFAULT"] = {'com_port' : 'COM1', 'baudrate' : '9600', 'out_file_base_name' : "unknown", 'server_port' : '0', 'server_address' : '127.0.0.1'}
-            with open('read_config.ini', 'w') as configfile:
-                self.config.write(configfile)
+        # self.config = configparser.ConfigParser()
+        # config_file_name = 'seislog.conf'
+        # try:
+        #     with open(config_file_name, 'r') as configfile:
+        #         self.config.read_file(configfile)
+        # except IOError:
+        #     self.config["DEFAULT"] = {'com_port' : 'COM1', 'baud_rate' : '9600', 'out_file_base_name' : "unknown", 'server_port' : '0', 'server_address' : '127.0.0.1'}
+        #     with open(config_file_name, 'w') as configfile:
+        #         print('configuration file not found - default {} written'.format(config_file_name))
+        #         self.config.write(configfile)
         self.com_port = self.config["DEFAULT"]["com_port"]
         self.baud_rate = self.config["DEFAULT"]["baud_rate"]
-
-        self.out_file_name = self.config["DEFAULT"]["out_file_base_name"] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
+        self.out_file_base_name = self.config["DEFAULT"]["out_file_base_name"]
+        self.out_file_name = self.out_file_base_name + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
         self.out_file = open(self.out_file_name, "w")
         self.server_address = self.config['DEFAULT']['server_address']
         self.server_port = self.config['DEFAULT']['server_port']
@@ -189,7 +191,7 @@ class PlotLogGui:
             if time_hour_minute == midnight:
                 if not self.rollover:
                     #print(time_hour_minute.strftime("%Y-%m-%dT%H%M"), midnight.strftime("%Y-%m-%dT%H%M"))
-                    self.out_file_name = self.config["DEFAULT"]["out_file_base_name"] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
+                    self.out_file_name = self.out_file_base_name + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
                     with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson") as url:
                         data = json.loads(url.read().decode())
                     with open(gui.out_file_name.replace(".csv", "")+'_quakes.json', 'w') as qfile:
