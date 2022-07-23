@@ -107,7 +107,7 @@ def socket_worker(server_port, out_queue, connected_event):
                 #print("transmitting data:", data)
                 out_queue.task_done()
                 try:
-                    print('sending data')
+                    #print('sending data')
                     conn.send(data)
                 except (ConnectionAbortedError, ConnectionResetError):
                     print('remote disconnected')

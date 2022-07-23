@@ -26,6 +26,7 @@ import configparser
 import queue
 import threading
 import socket
+import getconfig
 
 def mb(s):
     tk.messagebox.showinfo(" ", s)
@@ -139,7 +140,7 @@ class PlotLogGui:
         self.trace = {"t" : np.linspace(899.9, 0, 9000), "y" : np.zeros(9000)}
         self.lines = []
         self.i = 0
-
+        self.config = getconfig.getconfig('seislog.conf')
         # self.config = configparser.ConfigParser()
         # config_file_name = 'seislog.conf'
         # try:
