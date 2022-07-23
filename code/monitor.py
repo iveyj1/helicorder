@@ -238,7 +238,6 @@ gui = PlotLogGui()
 anim = animation.FuncAnimation(gui.fig, update, interval=100)
 gui.master.mainloop()
 
-gui.ser.close()
 if gui.out_file != None:
     gui.out_file.close()
 
