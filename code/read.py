@@ -2,10 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
-
 import scipy.signal as sig
 import sys
-import numpy as np
 import csv
 import datetime
 import serial
@@ -13,28 +11,21 @@ import serial.tools.list_ports as list_ports
 import tkinter.dialog as dialog
 import json
 import urllib
-
-import time
-
 import urllib.request, json 
-
-from datetime import timedelta
 import tkinter as tk
 from tkinter import messagebox
- 
 import tkinter.ttk as ttk
 from tkinter.filedialog import askopenfilename
-#import serial.tools.list_ports
 
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 # Implement the default Matplotlib key bindings.
 from matplotlib.figure import Figure
 import os
-
 import configparser
 import queue
 import threading
+import socket
 
 def mb(s):
     tk.messagebox.showinfo(" ", s)
@@ -154,7 +145,7 @@ class PlotLogGui:
             with open('read_config.ini', 'r') as configfile:
                 self.config.read_file(configfile)
         except IOError:
-            self.config["DEFAULT"] = {'com_port' : 'COM1', 'baudrate' : '115200', 'out_file_base_name' : "unknown", 'socket_port' : '0'}
+            self.config["DEFAULT"] = {'com_port' : 'COM1', 'baudrate' : '9600', 'out_file_base_name' : "unknown", 'server_port' : '0', 'server_address' : '127.0.0.1'}
             with open('read_config.ini', 'w') as configfile:
                 self.config.write(configfile)
         self.com_port = self.config["DEFAULT"]["com_port"]
@@ -162,26 +153,28 @@ class PlotLogGui:
 
         self.out_file_name = self.config["DEFAULT"]["out_file_base_name"] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
         self.out_file = open(self.out_file_name, "w")
+        self.server_address = self.config['DEFAULT']['server_address']
+        self.server_port = self.config['DEFAULT']['server_port']
+        
         print(type(self.out_file))
         print("opening: %s" % os.path.realpath(self.out_file.name))
         
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.connect((self.server_address, int(self.server_port)))
+        self.s.setblocking(0)
 
-        self.ser = serial.Serial(self.com_port, self.baud_rate, timeout = 0)
-        while(self.ser.read(1000) == 1000):
-            pass
         self.sampcount = 0
         self.remainder = ""
         self.queue = None
-        if self.config['DEFAULT']['socket_port'] != 0:
-            self.socket_out_queue = queue.Queue()
-            self.socket_connected_event = threading.Event()
-            self.socket_thread = threading.Thread(target = socket_worker, args = (self.config['DEFAULT']['socket_port'], self.socket_out_queue, self.socket_connected_event))
-            self.socket_thread.daemon = True
-            self.socket_thread.start()
         self.rollover = False
 
     def read_data(self):
-        str = self.ser.read(1000).decode("utf-8")
+        str = ''
+        try:
+            str = self.s.recv(1).decode("utf-8")
+        except BlockingIOError:
+            pass
+
         if len(str) > 0:
             list, self.remainder = getlines(self.remainder + str)
             for data in list:
@@ -190,8 +183,6 @@ class PlotLogGui:
                 self.trace["y"][-1] = int(data)
                 if self.out_file != None:
                     self.out_file.write(data + "\n") 
-                if self.socket_connected_event.is_set():
-                    self.socket_out_queue.put(data.encode('utf-8') + b'\n')            
             self.out_file.close()
             time_hour_minute = datetime.datetime.utcnow().replace(year=1900, month=1, day=1, second=0, microsecond=0)
             midnight = datetime.datetime(1900,1,1,0,0,0,0)
@@ -221,30 +212,6 @@ class PlotLogGui:
             self.lines[0].set_data(self.trace['t'], self.trace['y'])
         self.fig.canvas.draw_idle()
 
-import socket
-def socket_worker(socket_port, out_queue, connected_event):
-    while 1:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((socket.gethostname(), int(socket_port)))
-            print("listening on", ("10.0.0.7", int(socket_port)))
-            s.listen(1)
-            conn, addr = s.accept()
-            print('Connection address:', addr)
-            connected_event.set()
-            while 1:
-                #data = conn.recv(BUFFER_SIZE)
-                data = out_queue.get(block = True)
-                print("transmitting data:", data)
-                out_queue.task_done()
-                try:
-                    conn.send(data)
-                except ConnectionAbortedError:
-                    connected_event.clear()
-                    break
-
-
-
-
 def getlines(str):
     list = []
     partial = ""
@@ -268,19 +235,9 @@ def update(a):
 i = 0               
 gui = PlotLogGui()
 
-with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson") as url:
-    data = json.loads(url.read().decode())
-with open(gui.out_file_name.replace(".csv", "")+'_quakes_prev.json', 'w') as qfile:
-    qfile.write(json.dumps(data))
-
 anim = animation.FuncAnimation(gui.fig, update, interval=100)
 #gui.read_data()
 gui.master.mainloop()
-
-with urllib.request.urlopen("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson") as url:
-    data = json.loads(url.read().decode())
-with open(gui.out_file_name.replace(".csv", "")+'_quakes.json', 'w') as qfile:
-    qfile.write(json.dumps(data))
 
 gui.ser.close()
 if gui.out_file != None:

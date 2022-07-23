@@ -42,10 +42,10 @@ class ReadData:
         self.sampcount = 0
         self.remainder = ""
         self.queue = None
-        if self.config['DEFAULT']['socket_port'] != 0:
+        if self.config['DEFAULT']['server_port'] != 0:
             self.socket_out_queue = queue.Queue()
             self.socket_connected_event = threading.Event()
-            self.socket_thread = threading.Thread(target = socket_worker, args = (self.config['DEFAULT']['socket_port'], self.socket_out_queue, self.socket_connected_event))
+            self.socket_thread = threading.Thread(target = socket_worker, args = (self.config['DEFAULT']['server_port'], self.socket_out_queue, self.socket_connected_event))
             self.socket_thread.daemon = True
             self.socket_thread.start()
         self.rollover = False
@@ -67,22 +67,30 @@ class ReadData:
                 if not self.rollover:
                     #print(time_hour_minute.strftime("%Y-%m-%dT%H%M"), midnight.strftime("%Y-%m-%dT%H%M"))
                     self.out_file_name = self.config["DEFAULT"]["out_file_base_name"] + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
-                    with urllib.request.urlopen(self.config.quakeurl) as url:
-                        data = json.loads(url.read().decode())
-                    with open(reader.out_file_name.replace(".csv", "")+'_quakes.json', 'w') as qfile:
-                        qfile.write(json.dumps(data))                    
+                    self.get_quakes_from_USGS('')
                     self.rollover = True
             else:
                 self.rollover = False
             self.out_file = open(self.out_file_name, "a")
-   
+
+    def get_quakes_from_USGS(self, filename_adder):
+        if self.get_quakes:
+            try:
+                print('downloading quakes')
+                with urllib.request.urlopen(self.quake_url,timeout = 10) as url:
+                    data = json.loads(url.read().decode())
+                with open(reader.out_file_name.replace('.csv', '') + '_quakes' + filename_adder +'.json', 'w') as qfile:
+                    qfile.write(json.dumps(data))
+            except urllib.error.URLError:
+                pass
+            print('done with quakes')
 
 import socket
 def socket_worker(socket_port, out_queue, connected_event):
     while 1:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((socket.gethostname(), int(socket_port)))
-            print("listening on", ("10.0.0.7", int(socket_port)))
+            s.bind(('', int(socket_port)))
+            print("listening on", (socket.gethostname(), int(socket_port)))  # how do I get numeric host address? - gethostbyname() returns 127.0.1.1
             s.listen(1)
             conn, addr = s.accept()
             print('Connection address:', addr)
@@ -93,8 +101,10 @@ def socket_worker(socket_port, out_queue, connected_event):
                 print("transmitting data:", data)
                 out_queue.task_done()
                 try:
+                    print('sending data')
                     conn.send(data)
-                except ConnectionAbortedError:
+                except (ConnectionAbortedError, ConnectionResetError):
+                    print('connection aborted')
                     connected_event.clear()
                     break
 
@@ -116,24 +126,16 @@ def getlines(str):
 
 i = 0               
 reader = ReadData()
-if reader.get_quakes:
-    with urllib.request.urlopen(reader.quake_url) as url:
-        data = json.loads(url.read().decode())
-    with open(reader.out_file_name.replace(".csv", "")+'_quakes_prev.json', 'w') as qfile:
-        qfile.write(json.dumps(data))
+reader.get_quakes_from_USGS('_prev')
 
 try:
     while True:
-        time.sleep(0.1)
+        time.sleep(0.05)
         reader.read_data()
 except KeyboardInterrupt:
     pass
 
-if reader.get_quakes:
-    with urllib.request.urlopen(reader.quake_url) as url:
-        data = json.loads(url.read().decode())
-    with open(reader.out_file_name.replace(".csv", "")+'_quakes.json', 'w') as qfile:
-        qfile.write(json.dumps(data))
+reader.get_quakes_from_USGS('')
 
 reader.ser.close()
 if reader.out_file != None:
