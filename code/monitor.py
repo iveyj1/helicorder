@@ -206,6 +206,6 @@ def update(a):
 i = 0               
 gui = PlotLogGui()
 
-anim = animation.FuncAnimation(gui.fig, update, interval=100)
+anim = animation.FuncAnimation(gui.fig, update, interval=50)
 gui.master.mainloop()
 
