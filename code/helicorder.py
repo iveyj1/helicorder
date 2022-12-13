@@ -36,6 +36,8 @@ class StdoutRedirector(object):
     def flush(self):
     	pass
 
+samplerate = 30
+
 def bin_to_str(b):
     return to_bytearray(b).decode("ascii")        
         
@@ -137,7 +139,7 @@ class PlotLogGui:
         self.axs = None
 
         self.strip_time = 3600.0 
-        self.sample_rate = 10.0
+        self.sample_rate = 30.0
         self.strip_samples = int(self.strip_time * self.sample_rate)
       
         sys.stdout = StdoutRedirector(self.text)
@@ -181,13 +183,13 @@ class PlotLogGui:
                     pass
             self.trace = np.array(self.trace)
             if(self.filter == "LP"):
-                coeffs = sig.firls(1023,bands=(0, 0.10, 0.14, 5), desired = (1, 1, 0, 0), fs=10)
+                coeffs = sig.firls(1023,bands=(0, 0.10, 0.14, 5), desired = (1, 1, 0, 0), fs=self.sample_rate)
                 self.trace = sig.filtfilt(coeffs, 1, self.trace)
             elif(self.filter == "HP"):
-                coeffs = sig.firls(1023,bands=(0, 1, 1.1, 5), desired = (0, 0, 1, 1), fs=10)
+                coeffs = sig.firls(1023,bands=(0, 1, 1.1, 5), desired = (0, 0, 1, 1), fs=self.sample_rate)
                 self.trace = sig.filtfilt(coeffs, 1, self.trace)
             elif(self.filter == "BP"):
-                coeffs = sig.firls(1023,bands=(0, .3, .35, 1, 1.05, 5), desired = (0, 0, 1, 1, 0, 0), fs=10)
+                coeffs = sig.firls(1023,bands=(0, .3, .35, 1, 1.05, 5), desired = (0, 0, 1, 1, 0, 0), fs=self.sample_rate)
                 self.trace = sig.filtfilt(coeffs, 1, self.trace)
 
     def lasthour(self, time):
@@ -241,7 +243,7 @@ class PlotLogGui:
                 end_sample = len(self.trace)
 
             else:
-                t = np.arange(0, self.strip_time, 0.1)
+                t = np.arange(0, self.strip_time, 1.0/30.0)
                 start_sample = end_first_strip_sample + self.strip_samples * (j - 1)
                 end_sample = end_first_strip_sample + self.strip_samples * j
 
@@ -268,7 +270,7 @@ class PlotLogGui:
         self.axs = self.fig.add_subplot(111)
         #t,f,sxx = sig.spectrogram(self.trace, self.sample_rate)
         #self.axs.imshow(sxx)
-        self.axs.specgram(self.trace, NFFT=2048, Fs=10, cmap='inferno')
+        self.axs.specgram(self.trace, NFFT=2048, Fs=self.sample_rate, cmap='inferno')
         self.fig.canvas.draw_idle()
         return    
         

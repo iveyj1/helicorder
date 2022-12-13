@@ -159,7 +159,8 @@ class PlotLogGui:
     def read_data(self):
         str = ''
         try:
-            str = self.s.recv(1).decode("utf-8")
+            str = b""
+            str = self.s.recv(100).decode("utf-8")
         except BlockingIOError:
             pass
 
@@ -182,8 +183,9 @@ class PlotLogGui:
             #    self.axs.set_ylim(ylimits[0] * 10, ylimits[1] * 10)
             self.lines[0].set_data(self.trace['t'], self.trace['y'])
         self.fig.canvas.draw_idle()
-
+linecount = 0
 def getlines(str):
+    global linecount
     list = []
     partial = ""
     #print("in getlines", str)
@@ -193,11 +195,12 @@ def getlines(str):
                 #print("partial", partial)
                 list.append(partial)
                 partial = ""
+            linecount += 1
         else:
             #print(str[i])
             partial = partial + str[i]
-    #print("result", list, partial)
-    return(list, partial)        
+    print(linecount, list, partial)
+    return(list, partial)     
 
 def update(a):
     global gui
@@ -206,6 +209,6 @@ def update(a):
 i = 0               
 gui = PlotLogGui()
 
-anim = animation.FuncAnimation(gui.fig, update, interval=50)
+anim = animation.FuncAnimation(gui.fig, update, interval=10)
 gui.master.mainloop()
 

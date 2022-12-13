@@ -100,8 +100,9 @@ def socket_worker(server_port, out_queue, connected_event):
                     print('remote disconnected')
                     connected_event.clear()
                     break
-
+linecount = 0
 def getlines(str):
+    global linecount
     list = []
     partial = ""
     #print("in getlines", str)
@@ -111,10 +112,14 @@ def getlines(str):
                 #print("partial", partial)
                 list.append(partial)
                 partial = ""
+                #print(linecount, list, partial)
+                linecount += 1
+            
+            #
         else:
             #print(str[i])
             partial = partial + str[i]
-    #print("result", list, partial)
+    #print(linecount, list, partial)
     return(list, partial)        
 
 i = 0               
@@ -123,7 +128,7 @@ reader.get_quakes_from_USGS('_prev')
 
 try:
     while True:
-        time.sleep(0.05) 
+        time.sleep(0.02) 
         reader.read_data()
 except KeyboardInterrupt:
     pass
