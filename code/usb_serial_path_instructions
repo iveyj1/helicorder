@@ -1,0 +1,5 @@
+dir /dev/serial/by-path
+use the path in that directory that is linked to by the ttyUSBx corresponding 
+to the usb serial device you want to use, e.g.:
+/dev/serial/by-path/platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.2:1.0-port0
+this link will be stable as long as the USB device isn't moved to another physical port
