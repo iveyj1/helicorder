@@ -1,29 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import time
-import scipy.signal as sig
-import sys
-import csv
-import datetime
 import serial
-import serial.tools.list_ports as list_ports
-import tkinter.dialog as dialog
-import json
-import urllib
-import urllib.request, json 
+#import serial.tools.list_ports as list_ports
 import tkinter as tk
 from tkinter import messagebox
-import tkinter.ttk as ttk
 
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 # Implement the default Matplotlib key bindings.
 from matplotlib.figure import Figure
-import os
 import configparser
-import queue
-import threading
 import socket
 import getconfig
 
@@ -55,16 +42,22 @@ def shift(xs, n):
 class PlotLogGui:
     def __init__(self):
 
+        self.config = getconfig.getconfig('seislog.conf')
+        self.server_address = self.config['DEFAULT']['server_address']
+        self.server_port = self.config['DEFAULT']['server_port']
+        self.sample_rate = float(self.config['DEFAULT']['sample_rate'])
+
+        self.display_y_offset = float(self.config['MONITOR']['display_y_offset'])
+        self.display_y_max = float(self.config['MONITOR']['display_y_max'])
+        self.display_y_min = float(self.config['MONITOR']['display_y_min'])
+        self.trace_duration = float(self.config['MONITOR']['trace_duration'])
+
+        self.display_samples = int(self.trace_duration * self.sample_rate)
+
         self.master = tk.Tk()
         
-        self.style = ttk.Style()     
-        self.style.configure('TButton', anchor='center')
-        self.style.configure('TLabel', anchor='center')
-        self.style.configure('TNotebook.Tab', foreground='blue')
-        self.style.configure('TLabelframe.Label', foreground='blue')
-  
         # create main window
-        self.master.title("Record - Version 0.0")
+        self.master.title("monitor - Version 0.1")
         self.master.geometry('800x600')
         self.master.rowconfigure(0,weight=1)
         self.master.columnconfigure(0, weight=1)
@@ -96,7 +89,7 @@ class PlotLogGui:
         self.controlFrame.config(borderwidth=2, relief="sunken")
         
         # create label
-        self.readbutton = ttk.Button(self.controlFrame, text="Don't push this button", command=self.read_data)
+        self.readbutton = tk.Button(self.controlFrame, text="Don't push this button", command=self.read_data)
 
         # configure frame grid
         colwt = [0,1]
@@ -131,29 +124,15 @@ class PlotLogGui:
 
         self.filter = None
         self.axs = self.fig.add_subplot(111)
-        
-
-        self.strip_time = 3600.0 
-        self.sample_rate = 10.0
-        self.strip_samples = int(self.strip_time * self.sample_rate)
-
-        self.trace = {"t" : np.linspace(899.9, 0, 9000), "y" : np.zeros(9000)}
+        self.trace = {"t" : np.linspace(self.trace_duration - 1 / self.sample_rate, 0, self.display_samples), "y" : np.zeros(self.display_samples)}
         self.lines = []
         self.i = 0
-        self.config = getconfig.getconfig('seislog.conf')
-        self.server_address = self.config['DEFAULT']['server_address']
-        self.server_port = self.config['DEFAULT']['server_port']
-        self.monitor_display_offset = int(self.config['DEFAULT']['monitor_display_offset'])
-        self.monitor_display_max = int(self.config['DEFAULT']['monitor_display_max'])
-        self.monitor_display_min = int(self.config['DEFAULT']['monitor_display_min'])
         
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((self.server_address, int(self.server_port)))
         self.s.setblocking(0)
 
-        self.sampcount = 0
         self.remainder = ""
-        self.queue = None
         self.rollover = False
 
     def read_data(self):
@@ -167,15 +146,14 @@ class PlotLogGui:
         if len(str) > 0:
             list, self.remainder = getlines(self.remainder + str)
             for data in list:
-                self.sampcount = self.sampcount + 1
                 self.trace["y"] = shift(self.trace['y'], -1)
-                self.trace["y"][-1] = int(data) + self.monitor_display_offset
+                self.trace["y"][-1] = int(data) + self.display_y_offset
             self.plot()
    
     def plot(self):
         if len(self.lines) == 0:
-            self.axs.set_ylim(self.monitor_display_max, self.monitor_display_min)
-            self.axs.set_xlim(900,0)
+            self.axs.set_ylim(self.display_y_max, self.display_y_min)
+            self.axs.set_xlim(self.trace_duration, 0)
             self.lines = self.axs.plot(self.trace['t'], self.trace['y'], color = 'b', linewidth = 1)
         else:
             #ylimits = self.axs.get_ylim()
@@ -188,18 +166,14 @@ def getlines(str):
     global linecount
     list = []
     partial = ""
-    #print("in getlines", str)
     for i in range(len(str)):
         if(str[i] == '\r' or str[i] == '\n'):
             if(len(partial) > 0):
-                #print("partial", partial)
                 list.append(partial)
                 partial = ""
             linecount += 1
         else:
-            #print(str[i])
             partial = partial + str[i]
-    print(linecount, list, partial)
     return(list, partial)     
 
 def update(a):
@@ -209,6 +183,6 @@ def update(a):
 i = 0               
 gui = PlotLogGui()
 
-anim = animation.FuncAnimation(gui.fig, update, interval=10)
+anim = animation.FuncAnimation(gui.fig, update, interval = 20)
 gui.master.mainloop()
 
