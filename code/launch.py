@@ -24,14 +24,14 @@ basepath = '/home/pi/helicorder/code'
 
 os.chdir(basepath)
 
-command = "nohup python3 seislog.py -t" + ">> seislog_con_out.txt 2>&1 &"
+command = "nohup python3 seislog.py -t" + "> con_out.txt 2>&1 &"
 if not findProcess("seislog.py"):
     print("launching logger: " + command) 
     os.system(command)
-    touch_command = "touch " + "starting"
+    touch_command = "touch " + "sl_starting"
 else:
     print("not launching: " +command )
-    touch_command = "touch " + "already_running"
+    touch_command = "touch " + "sl__running"
 os.system(touch_command)    
             
             

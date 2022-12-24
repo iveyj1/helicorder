@@ -84,7 +84,15 @@ import socket
 def socket_worker(server_port, out_queue, connected_event):
     while 1:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('', int(server_port)))
+            while 1:
+                try:
+                    s.bind(('', int(server_port)))
+                    break
+                except:
+                    print(f'bind to {server_port} failed')
+                    time.sleep(15)
+                    pass
+            
             print("listening on", (socket.gethostname(), int(server_port)))  # how do I get numeric host address? - gethostbyname() returns 127.0.1.1
             s.listen(1)
             conn, addr = s.accept()
@@ -122,22 +130,25 @@ def getlines(str):
     #print(linecount, list, partial)
     return(list, partial)        
 
-i = 0               
-reader = ReadData()
-reader.get_quakes_from_USGS('_prev')
 
 try:
-    while True:
-        time.sleep(0.02) 
-        reader.read_data()
-except KeyboardInterrupt:
-    pass
+    i = 0               
+    reader = ReadData()
+    reader.get_quakes_from_USGS('_prev')
 
-reader.get_quakes_from_USGS('')
+    try:
+        while True:
+            time.sleep(0.02) 
+            reader.read_data()
+    except KeyboardInterrupt:
+        pass
 
-if reader.ser != None:
-    reader.ser.close()
+    reader.get_quakes_from_USGS('')
 
-if reader.out_file != None:
-    reader.out_file.close()
+finally:
+    if reader.ser != None:
+        reader.ser.close()
 
+    if reader.out_file != None:
+        reader.out_file.close()
+    
