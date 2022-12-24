@@ -5,6 +5,7 @@ import serial
 #import serial.tools.list_ports as list_ports
 import tkinter as tk
 from tkinter import messagebox
+import time
 
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
@@ -143,6 +144,10 @@ class PlotLogGui:
             str = self.s.recv(100).decode("utf-8")
         except BlockingIOError:
             pass
+# #       except ConnectionResetError:
+#             self.remainder = 0
+#             time.delay(1)
+#             self.s.connect((self.server_address, int(self.server_port)))
 
         if len(str) > 0:
             list, self.remainder = getlines(self.remainder + str)

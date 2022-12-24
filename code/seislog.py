@@ -96,7 +96,7 @@ def socket_worker(server_port, out_queue, connected_event):
                 out_queue.task_done()
                 try:
                     conn.send(data)
-                except (ConnectionAbortedError, ConnectionResetError):
+                except (ConnectionAbortedError, ConnectionResetError, TimeoutError):
                     print('remote disconnected')
                     connected_event.clear()
                     break
