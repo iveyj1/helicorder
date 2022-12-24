@@ -5,6 +5,7 @@ import serial
 #import serial.tools.list_ports as list_ports
 import tkinter as tk
 from tkinter import messagebox
+import time
 
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
@@ -53,6 +54,7 @@ class PlotLogGui:
         self.trace_duration = float(self.config['MONITOR']['trace_duration'])
 
         self.display_samples = int(self.trace_duration * self.sample_rate)
+        print("num display samples %d"%(self.display_samples))
 
         self.master = tk.Tk()
         
@@ -124,8 +126,8 @@ class PlotLogGui:
 
         self.filter = None
         self.axs = self.fig.add_subplot(111)
-        self.trace = {"t" : np.linspace(self.trace_duration - 1 / self.sample_rate, 0, self.display_samples), "y" : np.zeros(self.display_samples)}
-        self.lines = []
+        self.trace = {"t" : np.linspace(self.trace_duration - (1 / self.sample_rate), 0, self.display_samples), "y" : np.zeros(self.display_samples)}
+        self.curves = []
         self.i = 0
         
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -142,6 +144,10 @@ class PlotLogGui:
             str = self.s.recv(100).decode("utf-8")
         except BlockingIOError:
             pass
+# #       except ConnectionResetError:
+#             self.remainder = 0
+#             time.delay(1)
+#             self.s.connect((self.server_address, int(self.server_port)))
 
         if len(str) > 0:
             list, self.remainder = getlines(self.remainder + str)
@@ -151,15 +157,15 @@ class PlotLogGui:
             self.plot()
    
     def plot(self):
-        if len(self.lines) == 0:
+        if len(self.curves) == 0:
             self.axs.set_ylim(self.display_y_max, self.display_y_min)
             self.axs.set_xlim(self.trace_duration, 0)
-            self.lines = self.axs.plot(self.trace['t'], self.trace['y'], color = 'b', linewidth = 1)
+            self.curves = self.axs.plot(self.trace['t'], self.trace['y'], color = 'b', linewidth = 1)
         else:
             #ylimits = self.axs.get_ylim()
             #if max(self.trace['y']) > ylimits[0] or min(self.trace['y']) < ylimits[1]:
             #    self.axs.set_ylim(ylimits[0] * 10, ylimits[1] * 10)
-            self.lines[0].set_data(self.trace['t'], self.trace['y'])
+            self.curves[0].set_data(self.trace['t'], self.trace['y'])
         self.fig.canvas.draw_idle()
 linecount = 0
 def getlines(str):

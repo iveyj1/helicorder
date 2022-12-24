@@ -183,13 +183,13 @@ class PlotLogGui:
                     pass
             self.trace = np.array(self.trace)
             if(self.filter == "LP"):
-                coeffs = sig.firls(1023,bands=(0, 0.10, 0.14, 5), desired = (1, 1, 0, 0), fs=self.sample_rate)
+                coeffs = sig.firls(1023, bands=(0, 1, 1.1, self.sample_rate/2.0), desired = (1, 1, 0, 0), fs = self.sample_rate)
                 self.trace = sig.filtfilt(coeffs, 1, self.trace)
             elif(self.filter == "HP"):
-                coeffs = sig.firls(1023,bands=(0, 1, 1.1, 5), desired = (0, 0, 1, 1), fs=self.sample_rate)
+                coeffs = sig.firls(1023, bands=(0, 1, 1.1, self.sample_rate/2.0), desired = (0, 0, 1, 1), fs = self.sample_rate)
                 self.trace = sig.filtfilt(coeffs, 1, self.trace)
             elif(self.filter == "BP"):
-                coeffs = sig.firls(1023,bands=(0, .3, .35, 1, 1.05, 5), desired = (0, 0, 1, 1, 0, 0), fs=self.sample_rate)
+                coeffs = sig.firls(1023, bands=(0, .1, .15, 1, 1.05, self.sample_rate/2.0), desired = (0, 0, 1, 1, 0, 0), fs = self.sample_rate)
                 self.trace = sig.filtfilt(coeffs, 1, self.trace)
 
     def lasthour(self, time):
