@@ -20,11 +20,11 @@ def findProcess(str):
     return False
 
 # main app
-basepath = '/home/pi/helicorder/code'
+basepath = 'helicorder/code'
 
 os.chdir(basepath)
 
-command = "nohup python3 seislog.py -t" + "> con_out.txt 2>&1 &"
+command = "nohup /usr/bin/python3 seislog.py -t" + "> con_out.txt 2>&1 &"
 if not findProcess("seislog.py"):
     print("launching logger: " + command) 
     os.system(command)
@@ -33,6 +33,4 @@ else:
     print("not launching: " +command )
     touch_command = "touch " + "sl__running"
 os.system(touch_command)    
-            
-            
-    
+
