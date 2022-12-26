@@ -27,7 +27,12 @@ class ReadData:
         self.out_file = open(self.out_file_name, "w")
 
         self.ser = None
-        self.ser = serial.Serial(self.com_port, self.baud_rate, timeout = 0)
+        try:
+            self.ser = serial.Serial(self.com_port, self.baud_rate, timeout = 0)
+        except serial.serialutil.SerialException:
+            print(f'Error: could not open serial port {self.com_port}')
+            exit()
+
         while(self.ser.read(1000) == 1000):
             pass
         self.remainder = ""
@@ -39,6 +44,12 @@ class ReadData:
             self.socket_thread.daemon = True
             self.socket_thread.start()
         self.rollover = False
+    def __del__(self):
+        if self.ser != None:
+            self.ser.close()
+
+        if self.out_file != None:
+            self.out_file.close()
 
     def read_data(self):
         str = self.ser.read(1000).decode("utf-8")
@@ -127,14 +138,11 @@ def getlines(str):
                 partial = ""
                 #print(linecount, list, partial)
                 linecount += 1
-            
-            #
         else:
             #print(str[i])
             partial = partial + str[i]
     #print(linecount, list, partial)
     return(list, partial)        
-
 
 try:
     i = 0               
@@ -154,10 +162,5 @@ except KeyboardInterrupt:
     pass
 
 finally:
-
-    if reader.ser != None:
-        reader.ser.close()
-
-    if reader.out_file != None:
-        reader.out_file.close()
+    pass
     

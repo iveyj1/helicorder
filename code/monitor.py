@@ -44,9 +44,10 @@ class PlotLogGui:
     def __init__(self):
 
         self.config = getconfig.getconfig('seislog.conf')
-        self.server_address = self.config['DEFAULT']['server_address']
+        self.server_address = self.config['MONITOR']['server_address']
         self.server_port = self.config['DEFAULT']['server_port']
         self.sample_rate = float(self.config['DEFAULT']['sample_rate'])
+        self.update_delay = float(self.config['MONITOR']['update_delay'])
 
         self.display_y_offset = float(self.config['MONITOR']['display_y_offset'])
         self.display_y_max = float(self.config['MONITOR']['display_y_max'])
