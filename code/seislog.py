@@ -9,6 +9,7 @@ import configparser
 import queue
 import threading
 import getconfig
+import socket
 
 class ReadData:
     def __init__(self):
@@ -80,34 +81,38 @@ class ReadData:
                 pass
             print('done with quakes')
 
-import socket
 def socket_worker(server_port, out_queue, connected_event):
-    while 1:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            while 1:
-                try:
-                    s.bind(('', int(server_port)))
-                    break
-                except:
-                    print(f'bind to {server_port} failed')
-                    time.sleep(15)
-                    pass
-            
-            print("listening on", (socket.gethostname(), int(server_port)))  # how do I get numeric host address? - gethostbyname() returns 127.0.1.1
-            s.listen(1)
-            conn, addr = s.accept()
-            print('remote connection from:', addr)
-            connected_event.set()
-            while 1:
-                data = out_queue.get(block = True)
-                #print("transmitting data:", data)
-                out_queue.task_done()
-                try:
-                    conn.send(data)
-                except (ConnectionAbortedError, ConnectionResetError, TimeoutError):
-                    print('remote disconnected')
-                    connected_event.clear()
-                    break
+#    try:
+        while 1:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                while 1:
+                    try:
+                        s.bind(('', int(server_port)))
+                        break
+                    except:
+                        print(f'bind to {server_port} failed')
+                        time.sleep(15)
+                        pass
+                print("listening on", (socket.gethostname(), int(server_port)))  # how do I get numeric host address? - gethostbyname() returns 127.0.1.1
+                s.listen(1)
+                conn, addr = s.accept()
+                print('remote connection from:', addr)
+                connected_event.set()
+                while 1:
+                    data = out_queue.get(block = True)
+                    #print("transmitting data:", data)
+                    out_queue.task_done()
+                    try:
+                        conn.send(data)
+                    except (ConnectionAbortedError, ConnectionResetError, TimeoutError):
+                        print('remote disconnected')
+                        connected_event.clear()
+                        break
+#    finally:
+#        s.shutdown()
+#        s.close()
+
+
 linecount = 0
 def getlines(str):
     global linecount
@@ -145,7 +150,11 @@ try:
 
     reader.get_quakes_from_USGS('')
 
+except KeyboardInterrupt:
+    pass
+
 finally:
+
     if reader.ser != None:
         reader.ser.close()
 
