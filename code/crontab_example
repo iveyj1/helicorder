@@ -20,7 +20,6 @@
 # 
 # For more information see the manual pages of crontab(5) and cron(8)
 # 
-MAILTO="pi@localhost"
 
 # m h  dom mon dow   command
 */1 * * * * /usr/bin/python3 helicorder/code/launch.py
