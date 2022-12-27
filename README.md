@@ -95,8 +95,8 @@ pi@meshlog-house:/dev/serial/by-path $ ll
 total 0
 drwxr-xr-x 2 root root 80 Dec 26 23:37 .
 drwxr-xr-x 4 root root 80 Dec 26 23:37 ..
-lrwxrwxrwx 1 root root 13 Dec 26 23:37 platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.2:1.0-port0 -> ../../ttyUSB0
-lrwxrwxrwx 1 root root 13 Dec 26 23:37 platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.3:1.0-port0 -> ../../ttyUSB1
+l... 23:37 platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.2:1.0-port0 -> ../../ttyUSB0
+l... 23:37 platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.3:1.0-port0 -> ../../ttyUSB1
 ```
 
 In this case instead of /dev/ttyUSB0 you would use: 
