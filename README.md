@@ -48,7 +48,7 @@ monitor.py - displays live data on a graph mostly for setup and debug.  This may
 
 helicorder.py displays the content of a data file and displays a graph and spectrum info and USGS quake info.
 
-Seislog.conf is ready by seislog and/or monitor for setup purposes.  Depending on the setup, there may be two copies of this on different machines.  Needs to be edited.  For the hardware you have the sample rate is 10
+Seislog.conf is read by seislog and/or monitor for setup purposes.  Depending on the setup, there may be two copies of this on different machines.  Needs to be edited.  For the hardware you have the sample rate is 10
 
 There is an example launch script and crontab to automate startup and recovery.
 
