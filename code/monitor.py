@@ -11,7 +11,6 @@ from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 # Implement the default Matplotlib key bindings.
 from matplotlib.figure import Figure
-import configparser
 import socket
 import getconfig
 
@@ -142,12 +141,17 @@ class PlotLogGui:
         try:
             str = b""
             str = self.s.recv(100).decode("utf-8")
+            #print(f"after recv: {len(str)}")
         except BlockingIOError:
+            #print("BlockingIOError")
             pass
-# #       except ConnectionResetError:
-#             self.remainder = 0
-#             time.delay(1)
-#             self.s.connect((self.server_address, int(self.server_port)))
+        except ConnectionResetError:
+            print("ConnectionResetError")
+            self.remainder = 0
+            time.delay(1)
+            self.s.connect((self.server_address, int(self.server_port)))
+            self.s.setblocking(0)
+            return
 
         if len(str) > 0:
             list, self.remainder = getlines(self.remainder + str)
