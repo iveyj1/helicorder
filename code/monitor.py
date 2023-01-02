@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -22,7 +23,10 @@ class StdoutRedirector(object):
         self.text_space = text_widget
 
     def write(self,string):
-        self.text_space.insert('end', string)
+        if string == '*CLEAR*':
+            self.text_space.clear()
+        else:
+            self.text_space.insert('end', string)
         self.text_space.see('end')
         
     def flush(self):
@@ -43,9 +47,10 @@ class PlotLogGui:
     def __init__(self):
 
         self.config = getconfig.getconfig('seislog.conf')
-        self.server_address = self.config['DEFAULT']['server_address']
+        self.server_address = self.config['MONITOR']['server_address']
         self.server_port = self.config['DEFAULT']['server_port']
         self.sample_rate = float(self.config['DEFAULT']['sample_rate'])
+        self.update_delay = float(self.config['MONITOR']['update_delay'])
 
         self.display_y_offset = float(self.config['MONITOR']['display_y_offset'])
         self.display_y_max = float(self.config['MONITOR']['display_y_max'])
@@ -53,7 +58,6 @@ class PlotLogGui:
         self.trace_duration = float(self.config['MONITOR']['trace_duration'])
 
         self.display_samples = int(self.trace_duration * self.sample_rate)
-        print("num display samples %d"%(self.display_samples))
 
         self.master = tk.Tk()
         
@@ -77,6 +81,10 @@ class PlotLogGui:
         self.scroll = tk.Scrollbar(self.textFrame, command=self.text.yview)
         self.text['yscrollcommand'] = self.scroll.set   
 
+        self.stdred = StdoutRedirector(self.text)
+        sys.stdout = self.stdred
+        #print("hello, console")
+
         # create plot widget
         self.fig = Figure()
         self.fig.set_tight_layout(True)
@@ -85,12 +93,12 @@ class PlotLogGui:
         self.plotcanvas = FigureCanvasTkAgg(self.fig, master=self.frame)  
         self.toolbarFrame = tk.Frame(self.frame)
 
-        # create frame for left-side controls
-        self.controlFrame = tk.Frame(self.frame)
-        self.controlFrame.config(borderwidth=2, relief="sunken")
+        # # create frame for left-side controls
+        # self.controlFrame = tk.Frame(self.frame)
+        # self.controlFrame.config(borderwidth=2, relief="sunken")
         
-        # create label
-        self.readbutton = tk.Button(self.controlFrame, text="Don't push this button", command=self.read_data)
+        # # create label
+        # self.readbutton = tk.Button(self.controlFrame, text="Don't push this button", command=self.read_data)
 
         # configure frame grid
         colwt = [0,1]
@@ -117,11 +125,11 @@ class PlotLogGui:
         toolbar = NavigationToolbar2Tk(self.plotcanvas, self.toolbarFrame)
         toolbar.update()
         
-        # controlframe in frame
-        self.controlFrame.grid(row=0, column=0, rowspan=2)
+        # # controlframe in frame
+        # self.controlFrame.grid(row=0, column=0, rowspan=2)
 
-        # label in controlframe
-        self.readbutton.grid(row=0, column=0)
+        # # label in controlframe
+        # self.readbutton.grid(row=0, column=0)
 
         self.filter = None
         self.axs = self.fig.add_subplot(111)
