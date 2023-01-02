@@ -65,12 +65,15 @@ class ReadData:
                 if self.socket_connected_event.is_set():
                     self.socket_out_queue.put(data.encode('utf-8') + b'\n')            
             self.out_file.close()
-            time_hour_minute = datetime.datetime.utcnow().replace(year=1900, month=1, day=1, second=0, microsecond=0)
+            timenow = datetime.datetime.utcnow()
+            # time_hour_minute = timenow.replace(year=1900, month=1, day=1, second=0, microsecond=0)
+            # midnight = datetime.datetime(1900,1,1,0,0,0,0)
+            time_hour_minute = timenow.replace(year=1900, month=1, day=1, second=0, microsecond=0)
             midnight = datetime.datetime(1900,1,1,0,0,0,0)
             if time_hour_minute == midnight:
                 if not self.rollover:
                     #print(time_hour_minute.strftime("%Y-%m-%dT%H%M"), midnight.strftime("%Y-%m-%dT%H%M"))
-                    self.out_file_name = self.out_file_base_name + time.strftime("%Y-%m-%dT%H%M", time.gmtime()) +'.csv' 
+                    self.out_file_name = self.out_file_base_name + timenow.strftime("%Y-%m-%dT%H%M") +'.csv' 
                     self.get_quakes_from_USGS('')
                     self.rollover = True
             else:
